@@ -1,0 +1,24 @@
+type Query {
+  job(id: ID!): Job!
+  pendingActions: [PendingAction!]!
+  home: Home!
+}
+
+type Job {
+  id: ID!
+  name: String!
+  clientName: String!
+}
+
+type PendingAction {
+  id: ID!
+  type: PendingActionType!
+  job: Job!
+}
+
+type Home {
+  pendingActions: [PendingAction!]!
+  currentJob: Job!
+}
+
+enum PendingActionType { JIR, Interview }
