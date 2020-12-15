@@ -48,7 +48,6 @@ abstract class TestBase {
   ): Pair<Channel<Response<D>>, Job> {
     val responses = Channel<Response<D>>(capacity = Channel.UNLIMITED)
 
-
     val job = launch {
       apollo.query(query)
         .toBuilder()

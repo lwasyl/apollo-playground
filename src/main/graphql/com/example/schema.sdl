@@ -2,6 +2,18 @@ type Query {
   job(id: ID!): Job!
   pendingActions: [PendingAction!]!
   home: Home!
+
+  foo: Foo!
+  bar: Bar!
+}
+
+type Foo {
+  id: ID!
+  fff: String!
+}
+
+type Bar {
+  bbb: String!
 }
 
 type Job {

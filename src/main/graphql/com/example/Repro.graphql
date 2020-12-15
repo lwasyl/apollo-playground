@@ -1,0 +1,12 @@
+query Foo {
+  foo {
+    id
+    fff
+  }
+}
+
+query Bar {
+  bar {
+    bbb
+  }
+}

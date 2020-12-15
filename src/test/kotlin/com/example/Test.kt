@@ -1,7 +1,25 @@
 package com.example
 
+import com.apollographql.apollo.ApolloClient
+import com.apollographql.apollo.api.Operation
+import com.apollographql.apollo.api.Response
+import com.apollographql.apollo.api.ResponseField
+import com.apollographql.apollo.cache.normalized.CacheKey
+import com.apollographql.apollo.cache.normalized.CacheKeyResolver
+import com.apollographql.apollo.cache.normalized.lru.EvictionPolicy
+import com.apollographql.apollo.cache.normalized.lru.LruNormalizedCacheFactory
+import com.apollographql.apollo.coroutines.await
+import com.apollographql.apollo.coroutines.toFlow
+import com.apollographql.apollo.fetcher.ApolloResponseFetchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.sendBlocking
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import okhttp3.Dispatcher
+import okhttp3.OkHttpClient
 import org.junit.jupiter.api.Test
 
 @ExperimentalCoroutinesApi
@@ -480,6 +498,43 @@ class Test : TestBase() {
 
     firstJob.cancel()
     secondJob.cancel()
+  }
+
+  @Test
+  internal fun `disjoint queries makes network request`(): Unit = runBlocking {
+    val channel = Channel<Response<FooQuery.Data>>(capacity = Channel.UNLIMITED)
+    val job = launch {
+      val watcher = apollo.query(FooQuery()).toBuilder()
+        .responseFetcher(ApolloResponseFetchers.CACHE_ONLY)
+        .build()
+        .watcher()
+        .toFlow()
+        .collect {
+          channel.sendBlocking(it)
+        }
+    }
+
+    channel.receive() // wait for the first, empty response
+
+    mockWebServer.enqueue(
+      """{
+    "data": {
+      "bar": {
+        "__typename": "Bar",
+        "bbb": "bbb"
+      }
+    }
+  }"""
+    )
+
+    apollo.query(BarQuery()).toBuilder()
+      .responseFetcher(ApolloResponseFetchers.NETWORK_ONLY)
+      .build()
+      .await()
+
+    delay(500) // Allow some time for Apollo to trigger stuff, for some reason
+
+    job.cancel()
   }
 }
 

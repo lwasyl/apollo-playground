@@ -47,16 +47,11 @@ class MockWebServerTestRule : BeforeEachCallback, AfterEachCallback {
 
 internal class IdBasedCacheKeyResolver : CacheKeyResolver() {
 
-  companion object {
-
-    private const val FIELD_ID = "id"
-  }
-
   override fun fromFieldRecordSet(field: ResponseField, recordSet: Map<String, Any>): CacheKey =
-    (recordSet[FIELD_ID] as? String).asCacheKey()
+    (recordSet["id"] as? String).asCacheKey()
 
   override fun fromFieldArguments(field: ResponseField, variables: Operation.Variables): CacheKey =
-    (field.resolveArgument(FIELD_ID, variables) as? String).asCacheKey()
+    (field.resolveArgument("id", variables) as? String).asCacheKey()
 
   private fun String?.asCacheKey(): CacheKey =
     takeIf { !it.isNullOrBlank() }
