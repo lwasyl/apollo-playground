@@ -64,16 +64,16 @@ class Test : TestBase() {
         "__typename": "PendingAction",
         "job": {
           "__typename": "Job",
-          "name": "First Job",
-          "clientName": "New First ClientName"
+          "name": "Second Job",
+          "clientName": "New Second ClientName"
         }
       },
       {
         "__typename": "PendingAction",
         "job": {
           "__typename": "Job",
-          "name": "Second Job",
-          "clientName": "New Second ClientName"
+          "name": "First Job",
+          "clientName": "New First ClientName"
         }
       }
     ]
@@ -279,7 +279,7 @@ class Test : TestBase() {
         "job": {
           "__typename": "Job",
           "id": "job-1",
-          "clientName": "First ClientName"
+          "clientName": "Updated First ClientName"
         }
       },
       {
@@ -287,7 +287,7 @@ class Test : TestBase() {
         "job": {
           "__typename": "Job",
           "id": "job-2",
-          "clientName": "Second ClientName"
+          "clientName": "Updated Second ClientName"
         }
       },
       {
@@ -533,6 +533,80 @@ class Test : TestBase() {
       .await()
 
     delay(500) // Allow some time for Apollo to trigger stuff, for some reason
+
+    job.cancel()
+  }
+
+  @Test
+  internal fun `fetching object by ID with list return type`(): Unit = runBlocking {
+    val channel = Channel<Response<JobByIdQuery.Data>>(capacity = Channel.UNLIMITED)
+
+    mockWebServer.enqueue(
+      """{
+  "data": {
+    "jobById": [
+      {
+        "__typename": "Job",
+        "id": "job-id",
+        "name": "First Name",
+        "clientName": "First ClientName"
+      }
+    ]
+  }
+}"""
+    )
+
+    val job = launch {
+      val watcher = apollo.query(JobByIdQuery("job-id")).toBuilder()
+        .build()
+        .watcher()
+        .toFlow()
+        .collect {
+          channel.sendBlocking(it)
+        }
+    }
+
+    channel.receive() // wait for the first, empty response
+
+    val afterFetching = cacheString()
+
+    job.cancel()
+  }
+
+  @Test
+  internal fun `with aliases`(): Unit = runBlocking {
+    val channel = Channel<Response<WithAliasesQuery.Data>>(capacity = Channel.UNLIMITED)
+
+    mockWebServer.enqueue(
+      """{
+  "data": {
+    "name": {
+      "__typename": "Job",
+      "id": "job-id",
+      "name": "First Name"
+    },
+    "clientName": {
+      "__typename": "Job",
+      "id": "job-id",
+      "clientName": "First ClientName"
+    }
+  }
+}"""
+    )
+
+    val job = launch {
+      val watcher = apollo.query(WithAliasesQuery("job-id")).toBuilder()
+        .build()
+        .watcher()
+        .toFlow()
+        .collect {
+          channel.sendBlocking(it)
+        }
+    }
+
+    channel.receive() // wait for the first, empty response
+
+    val afterFetching = cacheString()
 
     job.cancel()
   }

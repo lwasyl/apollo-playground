@@ -1,16 +1,19 @@
-query Dupa {
-  job(id: "constant-id") {
+query JobById($id: ID!) {
+  jobById(id: $id) {
     id
     name
+    clientName
   }
 }
 
-query Cycki {
-  home {
-    currentJob {
-      id
-      clientName
-    }
+query WithAliases($id: ID!) {
+  name: job(id: $id, additionalParam: true) {
+    id
+    name
+  }
+  clientName: job(id: $id, additionalParam: false) {
+    id
+    clientName
   }
 }
 

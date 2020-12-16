@@ -1,7 +1,9 @@
 type Query {
-  job(id: ID!): Job!
+  job(id: ID!, additionalParam: Boolean = false): Job!
   pendingActions: [PendingAction!]!
   home: Home!
+
+  jobById(id: ID!): [Job!]!
 
   foo: Foo!
   bar: Bar!
