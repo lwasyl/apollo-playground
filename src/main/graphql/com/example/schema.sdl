@@ -3,6 +3,8 @@ type Query {
   pendingActions: [PendingAction!]!
   home: Home!
 
+  queryWithArrayArg(types: StatusGroup!): String!
+
   jobById(id: ID!): [Job!]!
 
   foo: Foo!
@@ -33,6 +35,10 @@ type PendingAction {
 type Home {
   pendingActions: [PendingAction!]!
   currentJob: Job!
+}
+
+input StatusGroup {
+  only: [PendingActionType!]!
 }
 
 enum PendingActionType { JIR, Interview }

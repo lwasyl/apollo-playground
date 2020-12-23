@@ -1,3 +1,12 @@
+query queryWithArrayArgPassedAsArray{
+  queryWithArrayArg(types: {only: [JIR] })
+}
+
+# Shouldn't compile, but compiled on iOS (and produced cache-miss between array and non-array variants
+# query queryWithArrayArgPassedAsScalar{
+#   queryWithArrayArg(types: {only: JIR })
+# }
+
 query JobById($id: ID!) {
   jobById(id: $id) {
     id
