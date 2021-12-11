@@ -1,25 +1,25 @@
 package com.example
 
-import com.apollographql.apollo.ApolloClient
-import com.apollographql.apollo.api.Operation
-import com.apollographql.apollo.api.Query
-import com.apollographql.apollo.api.Response
-import com.apollographql.apollo.cache.normalized.NormalizedCache
-import com.apollographql.apollo.cache.normalized.lru.EvictionPolicy
-import com.apollographql.apollo.cache.normalized.lru.LruNormalizedCacheFactory
-import com.apollographql.apollo.coroutines.toFlow
-import com.apollographql.apollo.fetcher.ApolloResponseFetchers
+import com.apollographql.apollo3.ApolloClient
+import com.apollographql.apollo3.api.ApolloResponse
+import com.apollographql.apollo3.api.Query
+import com.apollographql.apollo3.cache.normalized.*
+import com.apollographql.apollo3.cache.normalized.api.MemoryCacheFactory
+import com.apollographql.apollo3.cache.normalized.api.NormalizedCache
+import com.apollographql.apollo3.cache.normalized.sql.SqlNormalizedCacheFactory
+import com.apollographql.apollo3.network.okHttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.sendBlocking
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.RegisterExtension
+
+val client = OkHttpClient.Builder().build()
 
 abstract class TestBase {
   @RegisterExtension
@@ -30,11 +30,16 @@ abstract class TestBase {
 
   @BeforeEach
   internal fun setUp() {
-    apollo = ApolloClient.builder()
-      .normalizedCache(LruNormalizedCacheFactory(EvictionPolicy.NO_EVICTION), IdBasedCacheKeyResolver())
-      .serverUrl(mockWebServer.mockWebServer.url("/"))
-      .dispatcher(immediateExecutorService())
-      .okHttpClient(OkHttpClient.Builder().dispatcher(Dispatcher(immediateExecutorService())).build())
+    val lruNormalizedCacheFactory = MemoryCacheFactory()
+    val cache = createInMemorySqlNormalizedCacheFactory()
+    apollo = ApolloClient.Builder()
+      .normalizedCache(
+        normalizedCacheFactory = lruNormalizedCacheFactory.chain(cache),
+        cacheKeyGenerator = IdBasedCacheKeyResolver(),
+        writeToCacheAsynchronously = false
+      )
+      .serverUrl(mockWebServer.mockWebServer.url("/").toString())
+      .okHttpClient(client)
       .build()
   }
 
@@ -42,32 +47,28 @@ abstract class TestBase {
     assert(withTimeoutOrNull(300) { receive() } == null)
   }
 
-  protected fun <D : Operation.Data> CoroutineScope.watch(
-    query: Query<D, D, *>,
-    networkOnly: Boolean = false
-  ): Pair<Channel<Response<D>>, Job> {
-    val responses = Channel<Response<D>>(capacity = Channel.UNLIMITED)
+  protected fun <D : Query.Data> CoroutineScope.watch(
+    query: Query<D>,
+    fetchPolicy: FetchPolicy,
+    refetchPolicy: FetchPolicy = fetchPolicy,
+  ): Pair<Channel<ApolloResponse<D>>, Job> {
+    val responses = Channel<ApolloResponse<D>>(capacity = Channel.UNLIMITED)
 
     val job = launch {
       apollo.query(query)
-        .toBuilder()
-        .apply {
-          if (networkOnly) {
-            responseFetcher(ApolloResponseFetchers.NETWORK_ONLY)
-          } else {
-            responseFetcher(ApolloResponseFetchers.CACHE_FIRST)
-          }
-        }
-        .build()
-        .watcher()
+        .fetchPolicy(fetchPolicy)
+        .refetchPolicy(refetchPolicy)
+        .storePartialResponses(true)
         .toFlow()
-        .collect {
-          responses.sendBlocking(it)
-        }
+        .catch { responses.close(it) }
+        .collect { responses.send(it) }
     }
+    job.invokeOnCompletion { responses.close() }
 
     return responses to job
   }
 
-  protected fun cacheString() = NormalizedCache.prettifyDump(apollo.apolloStore.normalizedCache().dump())
+  protected suspend fun cacheString() = NormalizedCache.prettifyDump(apollo.apolloStore.accessCache(NormalizedCache::dump))
 }
+
+private fun createInMemorySqlNormalizedCacheFactory() = SqlNormalizedCacheFactory("jdbc:sqlite:")

@@ -1,11 +1,10 @@
 *.iml
 .gradle
 /local.properties
-.idea/*
-!.idea/codeStyles/
-.idea/codeStyles/codeStyleConfig.xml
+.idea
 .DS_Store
 build/
+projectFilesBackup
 /captures
 .externalNativeBuild
 upload.log

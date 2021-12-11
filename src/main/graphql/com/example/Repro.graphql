@@ -1,12 +1,21 @@
-query Foo {
-  foo {
-    id
-    fff
+query Books {
+  viewer {
+    books {
+      ...bookFragment
+    }
   }
 }
 
-query Bar {
-  bar {
-    bbb
+query Unrelated {
+  viewer {
+    something {
+      id
+      name
+    }
   }
+}
+
+fragment bookFragment on Book {
+  id
+  name
 }

@@ -1,9 +1,9 @@
 package com.example
 
-import com.apollographql.apollo.api.Operation
-import com.apollographql.apollo.api.ResponseField
-import com.apollographql.apollo.cache.normalized.CacheKey
-import com.apollographql.apollo.cache.normalized.CacheKeyResolver
+import com.apollographql.apollo3.cache.normalized.api.CacheKey
+import com.apollographql.apollo3.cache.normalized.api.CacheKeyGenerator
+import com.apollographql.apollo3.cache.normalized.api.CacheKeyGeneratorContext
+import com.apollographql.apollo3.cache.normalized.api.TypePolicyCacheKeyGenerator
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.QueueDispatcher
@@ -21,7 +21,8 @@ class MockWebServerTestRule : BeforeEachCallback, AfterEachCallback {
   lateinit var mockWebServer: MockWebServer
     private set
 
-  fun enqueue(@Language("JSON") response: String) = mockWebServer.enqueue(MockResponse().setBody(response))
+  fun enqueue(@Language("JSON") response: String) =
+    mockWebServer.enqueue(MockResponse().setBody(response).setBodyDelay(10, TimeUnit.MILLISECONDS))
 
   override fun beforeEach(context: ExtensionContext?) {
     println("Starting web server")
@@ -45,18 +46,11 @@ class MockWebServerTestRule : BeforeEachCallback, AfterEachCallback {
   }
 }
 
-internal class IdBasedCacheKeyResolver : CacheKeyResolver() {
+internal class IdBasedCacheKeyResolver : CacheKeyGenerator {
 
-  override fun fromFieldRecordSet(field: ResponseField, recordSet: Map<String, Any>): CacheKey =
-    (recordSet["id"] as? String).asCacheKey()
-
-  override fun fromFieldArguments(field: ResponseField, variables: Operation.Variables): CacheKey =
-    (field.resolveArgument("id", variables) as? String).asCacheKey()
-
-  private fun String?.asCacheKey(): CacheKey =
-    takeIf { !it.isNullOrBlank() }
-      ?.let { CacheKey.from(it) }
-      ?: CacheKey.NO_KEY
+  override fun cacheKeyForObject(obj: Map<String, Any?>, context: CacheKeyGeneratorContext) =
+    obj["id"]?.toString()?.let(::CacheKey)
+      ?: TypePolicyCacheKeyGenerator.cacheKeyForObject(obj, context)
 }
 
 fun immediateExecutorService(): ExecutorService {

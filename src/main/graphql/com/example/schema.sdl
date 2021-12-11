@@ -1,44 +1,17 @@
 type Query {
-  job(id: ID!, additionalParam: Boolean = false): Job!
-  pendingActions: [PendingAction!]!
-  home: Home!
-
-  queryWithArrayArg(types: StatusGroup!): String!
-
-  jobById(id: ID!): [Job!]!
-
-  foo: Foo!
-  bar: Bar!
+  viewer: Viewer!
 }
 
-type Foo {
-  id: ID!
-  fff: String!
+type Viewer {
+  books: [Book]!
+  something: [Unrelated]!
+}
+type Book {
+  id: String
+  name: String
 }
 
-type Bar {
-  bbb: String!
+type Unrelated {
+  id: String
+  name: String
 }
-
-type Job {
-  id: ID!
-  name: String!
-  clientName: String!
-}
-
-type PendingAction {
-  id: ID!
-  type: PendingActionType!
-  job: Job!
-}
-
-type Home {
-  pendingActions: [PendingAction!]!
-  currentJob: Job!
-}
-
-input StatusGroup {
-  only: [PendingActionType!]!
-}
-
-enum PendingActionType { JIR, Interview }
