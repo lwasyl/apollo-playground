@@ -5,10 +5,13 @@ type Query {
 type Viewer {
   books: [Book]!
   something: [Unrelated]!
+  justAField: String!
 }
+
 type Book {
-  id: String
+  id: String!
   name: String
+  title: String,
 }
 
 type Unrelated {

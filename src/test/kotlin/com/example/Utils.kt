@@ -1,8 +1,12 @@
 package com.example
 
+import com.apollographql.apollo3.api.CompiledField
+import com.apollographql.apollo3.api.Executable
 import com.apollographql.apollo3.cache.normalized.api.CacheKey
 import com.apollographql.apollo3.cache.normalized.api.CacheKeyGenerator
 import com.apollographql.apollo3.cache.normalized.api.CacheKeyGeneratorContext
+import com.apollographql.apollo3.cache.normalized.api.CacheKeyResolver
+import com.apollographql.apollo3.cache.normalized.api.FieldPolicyCacheResolver
 import com.apollographql.apollo3.cache.normalized.api.TypePolicyCacheKeyGenerator
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -18,54 +22,74 @@ import java.util.concurrent.TimeUnit
 
 class MockWebServerTestRule : BeforeEachCallback, AfterEachCallback {
 
-  lateinit var mockWebServer: MockWebServer
-    private set
+    lateinit var mockWebServer: MockWebServer
+        private set
 
-  fun enqueue(@Language("JSON") response: String) =
-    mockWebServer.enqueue(MockResponse().setBody(response).setBodyDelay(10, TimeUnit.MILLISECONDS))
+    fun enqueue(@Language("JSON") response: String) =
+        mockWebServer.enqueue(MockResponse().setBody(response).setBodyDelay(10, TimeUnit.MILLISECONDS))
 
-  override fun beforeEach(context: ExtensionContext?) {
-    println("Starting web server")
-    mockWebServer = MockWebServer()
-    mockWebServer.dispatcher = object : QueueDispatcher() {
-      init {
-        setFailFast(true)
-      }
+    override fun beforeEach(context: ExtensionContext?) {
+        println("Starting web server")
+        mockWebServer = MockWebServer()
+        mockWebServer.dispatcher = object : QueueDispatcher() {
+            init {
+                setFailFast(true)
+            }
 
-      override fun dispatch(request: RecordedRequest): MockResponse {
-        println("Dispatching ${request.getHeader("X-APOLLO-OPERATION-NAME")}")
-        return super.dispatch(request)
-      }
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                println("Dispatching ${request.getHeader("X-APOLLO-OPERATION-NAME")}")
+                return super.dispatch(request)
+            }
+        }
+        mockWebServer.start()
     }
-    mockWebServer.start()
-  }
 
-  override fun afterEach(context: ExtensionContext?) {
-    println("Closing web server")
-    mockWebServer.close()
-  }
+    override fun afterEach(context: ExtensionContext?) {
+        println("Closing web server")
+        mockWebServer.close()
+    }
 }
 
-internal class IdBasedCacheKeyResolver : CacheKeyGenerator {
+internal object IdBasedCacheKeyResolver : CacheKeyGenerator, CacheKeyResolver() {
 
-  override fun cacheKeyForObject(obj: Map<String, Any?>, context: CacheKeyGeneratorContext) =
-    obj["id"]?.toString()?.let(::CacheKey)
-      ?: TypePolicyCacheKeyGenerator.cacheKeyForObject(obj, context)
+    private const val FIELD_ID = "id"
+    private const val FIELD_IDS = "ids"
+    override fun cacheKeyForObject(obj: Map<String, Any?>, context: CacheKeyGeneratorContext) =
+        obj[FIELD_ID]?.asCacheKey()
+
+    override fun cacheKeyForField(field: CompiledField, variables: Executable.Variables): CacheKey? =
+        field.resolveArgument(FIELD_ID, variables)?.asCacheKey()
+
+    override fun listOfCacheKeysForField(field: CompiledField, variables: Executable.Variables): List<CacheKey?>? {
+        val ids = field.resolveArgument(FIELD_IDS, variables)
+
+        return if (ids is List<*>) {
+            ids.map { it?.asCacheKey() }
+        } else {
+            null
+        }
+    }
+
+    private fun Any.asCacheKey() =
+        (this as? String)
+            ?.takeUnless(String::isBlank)
+            ?.let(::CacheKey)
+
 }
 
 fun immediateExecutorService(): ExecutorService {
-  return object : AbstractExecutorService() {
-    override fun shutdown() = Unit
+    return object : AbstractExecutorService() {
+        override fun shutdown() = Unit
 
-    override fun shutdownNow(): List<Runnable>? = null
+        override fun shutdownNow(): List<Runnable>? = null
 
-    override fun isShutdown(): Boolean = false
+        override fun isShutdown(): Boolean = false
 
-    override fun isTerminated(): Boolean = false
+        override fun isTerminated(): Boolean = false
 
-    @Throws(InterruptedException::class)
-    override fun awaitTermination(l: Long, timeUnit: TimeUnit): Boolean = false
+        @Throws(InterruptedException::class)
+        override fun awaitTermination(l: Long, timeUnit: TimeUnit): Boolean = false
 
-    override fun execute(runnable: Runnable) = runnable.run()
-  }
+        override fun execute(runnable: Runnable) = runnable.run()
+    }
 }

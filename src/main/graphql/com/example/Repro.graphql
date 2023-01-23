@@ -1,21 +1,16 @@
-query Books {
+query BooksWithField {
   viewer {
     books {
-      ...bookFragment
-    }
-  }
-}
-
-query Unrelated {
-  viewer {
-    something {
       id
       name
     }
+    justAField
   }
 }
 
-fragment bookFragment on Book {
-  id
-  name
+query StandaloneField {
+  viewer {
+    justAField
+  }
 }
+

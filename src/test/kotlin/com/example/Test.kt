@@ -1,30 +1,33 @@
 package com.example
 
-import com.apollographql.apollo3.cache.normalized.FetchPolicy
+import com.apollo.repro.BooksWithFieldQuery
+import com.apollo.repro.StandaloneFieldQuery
+import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import org.junit.jupiter.api.Test
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.ExperimentalTime
 
 class Test : TestBase() {
 
-  @OptIn(ExperimentalTime::class)
-  @Test
-  fun `cache only`() = runBlocking {
-    mockWebServer.enqueue(response)
-    val (prefetch, prefetchJob) = watch(BooksQuery(), fetchPolicy = FetchPolicy.NetworkOnly, refetchPolicy = FetchPolicy.NetworkOnly)
-    val (cache_only, firstJob) = watch(BooksQuery(), fetchPolicy = FetchPolicy.CacheOnly, refetchPolicy = FetchPolicy.CacheFirst)
+    @Test
+    fun `cache only`() = runBlocking {
+        mockWebServer.enqueue(response)
+        val (cache_only1, job1) = watch(query = BooksWithFieldQuery())
+        val (fieldCacheOnly, job2) = watch(query = StandaloneFieldQuery())
+        cache_only1.readValue().data shouldBe null // empty cache = empty response
+//        fieldCacheOnly.readValue().data shouldBe null // empty cache = empty response todo
 
-    val receivedFirst = prefetch.receiveAsFlow().first()
-    val receivedSecond = cache_only.receiveAsFlow().first()
-    check(receivedFirst.data == receivedSecond.data)
+        val refreshed = refresh(query = BooksWithFieldQuery())
+        refreshed.data shouldBe cache_only1.readValue().data
+        fieldCacheOnly.readValue().data?.viewer?.justAField shouldBe refreshed.data?.viewer?.justAField
 
-    prefetch.cancel()
-    cache_only.cancel()
-    prefetchJob.cancel()
-    firstJob.cancel()
-  }
+        cache_only1.cancel()
+        fieldCacheOnly.cancel()
+        job1.cancel()
+        job2.cancel()
+    }
 }
+
+private suspend fun <T> Channel<T>.readValue() = receiveAsFlow().first()
