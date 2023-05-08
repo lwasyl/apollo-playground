@@ -13,6 +13,6 @@ type Book {
 }
 
 input BookInput {
-  authorId: String!
+  authorId: String
   deprecatedParameter: Int @deprecated(reason: "Not needed anymore")
 }
