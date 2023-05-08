@@ -1,6 +1,6 @@
-query BooksByID($bookId: ID!) {
+query BooksByAuthor($authorId: String!) {
   viewer {
-    books(input: {bookId: $bookId}) {
+    books(input: { authorId: $authorId }) {
       id
       name
     }
