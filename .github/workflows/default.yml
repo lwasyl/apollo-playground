@@ -1,0 +1,22 @@
+name: Build Project
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: 20
+
+      - uses: gradle/gradle-build-action@v2
+
+      - run: ./gradlew assemble

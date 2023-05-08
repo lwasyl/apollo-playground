@@ -1,16 +1,8 @@
-query BooksWithField {
+query BooksByID($bookId: ID!) {
   viewer {
-    books {
+    books(input: {bookId: $bookId}) {
       id
       name
     }
-    justAField
   }
 }
-
-query StandaloneField {
-  viewer {
-    justAField
-  }
-}
-

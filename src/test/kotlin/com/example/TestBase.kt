@@ -60,7 +60,7 @@ abstract class TestBase {
                 .refetchPolicy(FetchPolicy.CacheFirst)
                 .storePartialResponses(true)
                 .emitCacheMisses(true)
-                .watch()
+                .watch(fetchThrows = false, refetchThrows = true)
                 .catch { responses.close(it) }
                 .collect { responses.send(it) }
         }

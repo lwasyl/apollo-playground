@@ -3,18 +3,23 @@ type Query {
 }
 
 type Viewer {
-  books: [Book]!
-  something: [Unrelated]!
-  justAField: String!
+  books(input: BookInput!): [Book]!
 }
 
 type Book {
   id: String!
   name: String
   title: String,
+  kind: BookKind!
 }
 
-type Unrelated {
-  id: String
-  name: String
+input BookInput {
+  kind: BookKind @deprecated(reason: "Not needed anymore")
+  bookId: ID!
+  version: Int
+}
+
+enum BookKind {
+  ONE
+  TWO
 }
