@@ -9,17 +9,10 @@ type Viewer {
 type Book {
   id: String!
   name: String
-  title: String,
-  kind: BookKind!
+  title: String
 }
 
 input BookInput {
-  kind: BookKind @deprecated(reason: "Not needed anymore")
   bookId: ID!
-  version: Int
-}
-
-enum BookKind {
-  ONE
-  TWO
+  version: Int @deprecated(reason: "Not needed anymore")
 }
