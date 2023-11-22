@@ -3,18 +3,27 @@ package com.example
 import org.intellij.lang.annotations.Language
 
 @Language("JSON")
-val response = """{
+val responseWithData = """{
+    "data": {
+      "viewer": {
+        "__typename": "Viewer",
+        "id": "viewerId",
+        "similarBook": {
+            "__typename": "Book",
+            "id": "fixture-id",
+            "name": "ok-2"
+          }
+      }
+    }
+  }"""
+
+@Language("JSON")
+val responseWithNull = """{
     "data": {
       "viewer": {
         "__typename": "Viewer", 
-        "books": [
-          {
-            "__typename": "Book",
-            "id": "id=1",
-            "name": "ok-2"
-          }
-        ],
-        "justAField": "test"
+        "id": "viewerId",
+        "similarBook": null
       }
     }
   }"""

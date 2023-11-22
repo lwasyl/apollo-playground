@@ -1,6 +1,8 @@
 package com.example
 
-import com.apollo.repro.BooksByAuthorQuery
+import com.apollo.repro.SearchRecommendedBooksQuery
+import com.apollographql.apollo3.cache.normalized.api.NormalizedCache
+import com.apollographql.apollo3.cache.normalized.apolloStore
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
@@ -12,15 +14,41 @@ class Test : TestBase() {
 
     @Test
     fun `cache only`() = runBlocking {
-        mockWebServer.enqueue(response)
-        val (cache_only1, job1) = watch(query = BooksByAuthorQuery(authorId = "fixture-id"))
-        cache_only1.readValue().data shouldBe null // empty cache = empty response
+        val query = SearchRecommendedBooksQuery(bookId = "fixture-id")
 
-        val refreshed = refresh(query = BooksByAuthorQuery(authorId = "fixture-id"))
-        refreshed.data shouldBe cache_only1.readValue().data
+        fun cacheDump() = NormalizedCache.prettifyDump(
+            runBlocking { apollo.apolloStore.accessCache(NormalizedCache::dump) },
+        )
+        runBlocking {
+            val (cache_only1, job1) = watch(query = query)
+            cache_only1.readValue().data shouldBe null
 
-        cache_only1.cancel()
-        job1.cancel()
+            mockWebServer.enqueue(responseWithData)
+            val refresh1 = refresh(query = query)
+            val message = cacheDump()
+            println(message)
+            refresh1.data shouldBe cache_only1.readValue().data
+
+            val (cache_only2, job2) = watch(query = query)
+            cache_only2.readValue().data shouldBe SearchRecommendedBooksQuery.Data(
+                viewer = SearchRecommendedBooksQuery.Viewer(
+                    id = "viewerId",
+                    similarBook = SearchRecommendedBooksQuery.SimilarBook(
+                        id = "fixture-id",
+                        name = "ok-2",
+                    ),
+                ),
+            )
+
+            mockWebServer.enqueue(responseWithNull)
+            val refresh2 = refresh(query = query)
+            refresh2.data shouldBe cache_only2.readValue().data
+
+            cache_only1.cancel()
+            job1.cancel()
+            cache_only2.cancel()
+            job2.cancel()
+        }
     }
 }
 

@@ -1,6 +1,7 @@
-query BooksByAuthor($authorId: String!) {
+query SearchRecommendedBooks($bookId: String!) {
   viewer {
-    books(input: { authorId: $authorId }) {
+    id
+    similarBook(id: $bookId) {
       id
       name
     }

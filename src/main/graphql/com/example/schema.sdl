@@ -3,16 +3,12 @@ type Query {
 }
 
 type Viewer {
-  books(input: BookInput!): [Book]!
+  id: String!,
+  similarBook(id: String!): Book
 }
 
 type Book {
   id: String!
-  name: String
-  title: String
-}
-
-input BookInput {
-  authorId: String
-  deprecatedParameter: Int @deprecated(reason: "Not needed anymore")
+  name: String!
+  title: String!
 }

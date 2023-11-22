@@ -11,6 +11,7 @@ import com.apollographql.apollo3.cache.normalized.sql.SqlNormalizedCacheFactory
 import com.apollographql.apollo3.network.okHttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
@@ -39,7 +40,7 @@ abstract class TestBase {
                 cacheResolver = IdBasedCacheKeyResolver,
                 writeToCacheAsynchronously = false,
             )
-//            .emitCacheMisses(true)
+//            .dispatcher(immediateExecutorService().asCoroutineDispatcher())
             .serverUrl(mockWebServer.mockWebServer.url("/").toString())
             .okHttpClient(client)
             .build()
